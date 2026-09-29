@@ -17,7 +17,7 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import useForm from "@/hooks/useForm";
+import { useForm } from "@/hooks/useForm";
 
 type LoginFormValues = {
   email: string;
@@ -31,20 +31,33 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(35)).current;
+  const fadeAnim = useRef(
+    new Animated.Value(0)
+  ).current;
 
-  const validateLogin = (values: LoginFormValues) => {
-    const validationErrors: Record<string, string> = {};
+  const slideAnim = useRef(
+    new Animated.Value(35)
+  ).current;
+
+  const validateLogin = (
+    values: LoginFormValues
+  ) => {
+    const validationErrors: Record<
+      string,
+      string
+    > = {};
 
     if (!values.email.trim()) {
-      validationErrors.email = "Please enter your email.";
+      validationErrors.email =
+        "Please enter your email.";
     } else if (!values.email.includes("@")) {
-      validationErrors.email = "Please enter a valid email.";
+      validationErrors.email =
+        "Please enter a valid email.";
     }
 
     if (!values.password) {
-      validationErrors.password = "Please enter your password.";
+      validationErrors.password =
+        "Please enter your password.";
     } else if (
       values.password.length < 8 ||
       !/\d/.test(values.password)
@@ -76,6 +89,7 @@ export default function LoginScreen() {
         duration: 650,
         useNativeDriver: true,
       }),
+
       Animated.spring(slideAnim, {
         toValue: 0,
         friction: 7,
@@ -85,43 +99,54 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
-  const handleLogin = async () => {
-    const isValid = handleSubmit(async (formValues) => {
-      setLoading(true);
+  const handleLogin = () => {
+    handleSubmit(
+      async (formValues: Record<string, string>) => {
+        setLoading(true);
 
-      const loggedInUser = await login(
-        formValues.email.trim(),
-        formValues.password
-      );
-
-      setLoading(false);
-
-      if (!loggedInUser) {
-        Alert.alert(
-          "Login Failed",
-          "Invalid email or password."
+        const loggedInUser = await login(
+          formValues.email.trim(),
+          formValues.password
         );
-        return;
-      }
 
-      if (loggedInUser.role === "manager") {
-        router.replace("/manager-dashboard");
-      } else {
-        router.replace("/explore");
-      }
-    });
+        setLoading(false);
 
-    if (!isValid) {
-      return;
-    }
+        if (!loggedInUser) {
+          Alert.alert(
+            "Login Failed",
+            "Invalid email or password."
+          );
+
+          return;
+        }
+
+        if (
+          loggedInUser.role === "manager"
+        ) {
+          router.replace(
+            "/manager-dashboard"
+          );
+        } else {
+          router.replace("/explore");
+        }
+      }
+    );
   };
 
   return (
     <LinearGradient
       colors={
         isDark
-          ? ["#121212", "#1A1714", "#0D0D0D"]
-          : ["#F8F6F2", "#EFEAE2", "#E5DED4"]
+          ? [
+              "#121212",
+              "#1A1714",
+              "#0D0D0D",
+            ]
+          : [
+              "#F8F6F2",
+              "#EFEAE2",
+              "#E5DED4",
+            ]
       }
       style={styles.container}
     >
@@ -153,6 +178,8 @@ export default function LoginScreen() {
               },
             ]}
           >
+            {/* BACK BUTTON */}
+
             <Pressable
               onPress={() => router.back()}
               style={[
@@ -176,6 +203,8 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
 
+            {/* LOGO */}
+
             <View
               style={[
                 styles.logoCircle,
@@ -190,6 +219,8 @@ export default function LoginScreen() {
               </Text>
             </View>
 
+            {/* BRAND */}
+
             <Text
               style={[
                 styles.brand,
@@ -200,6 +231,8 @@ export default function LoginScreen() {
             >
               SAVORIA
             </Text>
+
+            {/* TITLE */}
 
             <Text
               style={[
@@ -225,6 +258,8 @@ export default function LoginScreen() {
               experience.
             </Text>
 
+            {/* EMAIL */}
+
             <View
               style={styles.inputContainer}
             >
@@ -243,7 +278,10 @@ export default function LoginScreen() {
               <TextInput
                 value={values.email}
                 onChangeText={(text) =>
-                  handleChange("email", text)
+                  handleChange(
+                    "email",
+                    text
+                  )
                 }
                 placeholder="you@example.com"
                 placeholderTextColor={
@@ -258,8 +296,10 @@ export default function LoginScreen() {
                       errors.email
                         ? "#F87171"
                         : colors.border,
+
                     backgroundColor:
                       colors.input,
+
                     color: colors.text,
                   },
                 ]}
@@ -273,6 +313,8 @@ export default function LoginScreen() {
                 </Text>
               ) : null}
             </View>
+
+            {/* PASSWORD */}
 
             <View
               style={styles.inputContainer}
@@ -337,8 +379,10 @@ export default function LoginScreen() {
                       errors.password
                         ? "#F87171"
                         : colors.border,
+
                     backgroundColor:
                       colors.input,
+
                     color: colors.text,
                   },
                 ]}
@@ -353,15 +397,19 @@ export default function LoginScreen() {
               ) : null}
             </View>
 
+            {/* LOGIN BUTTON */}
+
             <Pressable
               onPress={handleLogin}
               disabled={loading}
               style={({ pressed }) => [
                 styles.loginButton,
+
                 {
                   backgroundColor:
                     colors.primary,
                 },
+
                 pressed &&
                   styles.buttonPressed,
               ]}
@@ -400,6 +448,8 @@ export default function LoginScreen() {
                 </>
               )}
             </Pressable>
+
+            {/* SIGNUP */}
 
             <View
               style={styles.signupRow}
@@ -555,17 +605,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 5,
+
     shadowOffset: {
       width: 0,
       height: 7,
     },
+
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
   },
 
   buttonPressed: {
-    transform: [{ scale: 0.97 }],
+    transform: [
+      {
+        scale: 0.97,
+      },
+    ],
   },
 
   loginButtonText: {
