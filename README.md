@@ -1,56 +1,76 @@
-# Welcome to your Expo app 👋
+# SAVORIA — Restaurant App MVP
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Savoria is a frontend-only Restaurant App MVP developed for the Fall 2026 Mobile App Development assignment.
 
-## Get started
+The app is built with React Native and Expo. It allows customers to browse restaurant food, search for menu items, add items to a cart, use promo codes, make table reservations, place orders, and track their orders.
 
-1. Install dependencies
+The app also includes a separate Manager Dashboard where the manager can manage orders, reservations, and menu items.
 
-   ```bash
-   npm install
-   ```
+The project uses local mock data and React state management. No backend, Firebase, real payment system, or external API is used.
 
-2. Start the app
+---
 
-   ```bash
-   npx expo start
-   ```
+## Project Overview
 
-In the output, you'll find options to open the app in a
+Savoria has two main user roles:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+### Customer
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+A customer can:
 
-## Get a fresh project
+- Create an account
+- Log in
+- Browse the restaurant menu
+- Search for food items
+- Filter menu items by category
+- Sort menu items
+- Add items to the cart
+- Increase or decrease item quantity
+- Remove items from the cart
+- Add special instructions to items
+- Apply promo codes
+- View the order summary
+- Reserve a restaurant table
+- View reservations
+- Cancel reservations
+- Place an order
+- Track order progress
+- View their profile
+- Change the app theme between light and dark mode
 
-When you're ready, run:
+### Manager
 
-```bash
-npm run reset-project
-```
+A manager can:
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Log in using the manager account
+- Open the Manager Dashboard
+- View incoming orders
+- Change order status
+- View reservations
+- Confirm or cancel reservations
+- Manage menu items
+- Add new menu items
+- Edit menu prices
+- Change menu item availability
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+# Main Features
 
-## Learn more
+## Authentication
 
-To learn more about developing your project with Expo, look at the following resources:
+The app uses local mock users instead of a backend authentication service.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+There are two roles:
 
-## Join the community
+- Customer
+- Manager
 
-Join our community of developers creating universal apps.
+The authenticated user is stored and shared through `AuthContext`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Mock Customer Account
+
+Email:
+
+```text
+roman@gmail.com
