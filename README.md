@@ -797,7 +797,11 @@ Final demonstration video:
 
 ```text
 To be added
-```
+```## 26. Demo Video
+
+Final demonstration video:
+
+https://drive.google.com/file/d/1lj2anYLSFrVmAn7Emsj3wZtTz-Sit8xK/view?usp=sharing
 
 The demonstration should cover:
 
