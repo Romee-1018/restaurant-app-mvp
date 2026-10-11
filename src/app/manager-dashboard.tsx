@@ -8,13 +8,15 @@ import {
 } from "react-native";
 
 import { useAuth } from "@/context/AuthContext";
+import { useMenu } from "@/context/MenuContext";
 import { useOrders } from "@/context/OrdersContext";
 import { useTheme } from "@/context/ThemeContext";
 
 export default function ManagerDashboard() {
   const { user } = useAuth();
-  const { orders } = useOrders();
-  const { colors } = useTheme();
+ const { orders } = useOrders();
+const { menuItems } = useMenu();
+const { colors } = useTheme();
 
   if (!user || user.role !== "manager") {
     return (
@@ -343,7 +345,7 @@ export default function ManagerDashboard() {
               { color: colors.text },
             ]}
           >
-            16
+            {menuItems.length}
           </Text>
 
           <Text

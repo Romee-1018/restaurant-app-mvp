@@ -1,107 +1,47 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
+import { useMenu } from "@/context/MenuContext";
 import { useTheme } from "@/context/ThemeContext";
 
-type MenuItem = {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  isAvailable: boolean;
-};
-
-const initialMenu: MenuItem[] = [
-  {
-    id: "1",
-    name: "Crispy Chicken Wings",
-    price: 850,
-    category: "Starters",
-    isAvailable: true,
-  },
-  {
-    id: "2",
-    name: "Loaded Fries",
-    price: 550,
-    category: "Starters",
-    isAvailable: true,
-  },
-  {
-    id: "3",
-    name: "Chicken Nuggets",
-    price: 600,
-    category: "Starters",
-    isAvailable: true,
-  },
-  {
-    id: "8",
-    name: "Chicken Biryani",
-    price: 750,
-    category: "Mains",
-    isAvailable: true,
-  },
-  {
-    id: "9",
-    name: "Chicken Steak",
-    price: 1250,
-    category: "Mains",
-    isAvailable: true,
-  },
-  {
-    id: "10",
-    name: "Chocolate Cake",
-    price: 650,
-    category: "Desserts",
-    isAvailable: true,
-  },
-  {
-    id: "14",
-    name: "Fresh Lemonade",
-    price: 350,
-    category: "Drinks",
-    isAvailable: true,
-  },
-];
-
-export default function MenuManagementScreen() {
+export default function MenuManagement() {
   const { colors } = useTheme();
 
-  const [menu, setMenu] =
-    useState<MenuItem[]>(initialMenu);
+  const {
+    menuItems,
+    isLoading,
+    error,
+    toggleAvailability,
+    updateMenuItem,
+    deleteMenuItem,
+  } = useMenu();
 
-  const [editingId, setEditingId] =
-    useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(
+    null
+  );
 
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editCategory, setEditCategory] = useState("");
 
-  const toggleAvailability = (itemId: string) => {
-    setMenu((previousMenu) =>
-      previousMenu.map((item) =>
-        item.id === itemId
-          ? {
-              ...item,
-              isAvailable: !item.isAvailable,
-            }
-          : item
-      )
-    );
-  };
-
-  const startEditing = (item: MenuItem) => {
+  const startEditing = (item: {
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+  }) => {
     setEditingId(item.id);
     setEditName(item.name);
-    setEditPrice(item.price.toString());
+    setEditPrice(String(item.price));
     setEditCategory(item.category);
   };
 
@@ -112,81 +52,80 @@ export default function MenuManagementScreen() {
     setEditCategory("");
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId) {
       return;
     }
 
-    if (!editName.trim()) {
-      Alert.alert(
-        "Invalid Name",
-        "Please enter a menu item name."
-      );
-      return;
-    }
-
-    if (!editPrice.trim()) {
-      Alert.alert(
-        "Invalid Price",
-        "Please enter a price."
-      );
-      return;
-    }
-
+    const cleanName = editName.trim();
+    const cleanCategory = editCategory.trim();
     const numericPrice = Number(editPrice);
 
-    if (
-      Number.isNaN(numericPrice) ||
-      numericPrice <= 0
-    ) {
+    if (!cleanName) {
+      Alert.alert("Error", "Item name is required.");
+      return;
+    }
+
+    if (!editPrice.trim() || Number.isNaN(numericPrice)) {
+      Alert.alert("Error", "Please enter a valid price.");
+      return;
+    }
+
+    if (numericPrice < 0) {
       Alert.alert(
-        "Invalid Price",
-        "Please enter a valid price."
+        "Error",
+        "Price cannot be negative."
       );
       return;
     }
 
-    if (!editCategory.trim()) {
-      Alert.alert(
-        "Invalid Category",
-        "Please enter a category."
-      );
+    if (!cleanCategory) {
+      Alert.alert("Error", "Category is required.");
       return;
     }
 
-    setMenu((previousMenu) =>
-      previousMenu.map((item) =>
-        item.id === editingId
-          ? {
-              ...item,
-              name: editName.trim(),
-              price: numericPrice,
-              category: editCategory.trim(),
-            }
-          : item
-      )
+    const success = await updateMenuItem(
+      editingId,
+      cleanName,
+      numericPrice,
+      cleanCategory
     );
 
-    cancelEditing();
-
-    Alert.alert(
-      "Updated",
-      "Menu item has been updated successfully."
-    );
+    if (success) {
+      Alert.alert(
+        "Success",
+        "Menu item updated successfully."
+      );
+      cancelEditing();
+    } else {
+      Alert.alert(
+        "Error",
+        "Failed to update menu item."
+      );
+    }
   };
 
-  const deleteItem = (itemId: string) => {
-    const item = menu.find(
-      (menuItem) => menuItem.id === itemId
+  const handleToggleAvailability = async (
+    id: string,
+    currentAvailability: boolean
+  ) => {
+    const success = await toggleAvailability(
+      id,
+      !currentAvailability
     );
 
-    if (!item) {
-      return;
+    if (!success) {
+      Alert.alert(
+        "Error",
+        "Failed to update availability."
+      );
     }
+  };
 
+  const deleteItem = (id: string, name: string) => {
     Alert.alert(
-      "Delete Menu Item",
-      `Are you sure you want to delete "${item.name}"?`,
+      "Delete Item",
+      `Are you sure you want to delete "${name}"?`,
       [
         {
           text: "Cancel",
@@ -195,48 +134,111 @@ export default function MenuManagementScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            setMenu((previousMenu) =>
-              previousMenu.filter(
-                (menuItem) =>
-                  menuItem.id !== itemId
-              )
-            );
+          onPress: async () => {
+            const success = await deleteMenuItem(id);
+
+            if (success) {
+              Alert.alert(
+                "Success",
+                "Menu item deleted successfully."
+              );
+            } else {
+              Alert.alert(
+                "Error",
+                "Failed to delete menu item."
+              );
+            }
           },
         },
       ]
     );
   };
 
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.background,
-        },
-      ]}
-    >
-      {/* HEADER */}
-      <View style={styles.header}>
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text
+          style={[
+            styles.loadingText,
+            { color: colors.text },
+          ]}
+        >
+          Loading menu...
+        </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={[
+          styles.centerContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text
+          style={[
+            styles.errorText,
+            { color: colors.text },
+          ]}
+        >
+          {error}
+        </Text>
+
         <Pressable
           onPress={() => router.back()}
-          style={({ pressed }) => [
+          style={[
             styles.backButton,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
-            pressed && styles.pressed,
+            { backgroundColor: colors.primary },
           ]}
         >
           <Text
             style={[
-              styles.backText,
+              styles.backButtonText,
+              { color: colors.primaryText },
+            ]}
+          >
+            Go Back
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={[
+        styles.container,
+        { backgroundColor: colors.background },
+      ]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={[
+            styles.backIconButton,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.backIcon,
               { color: colors.text },
             ]}
           >
-            ‹
+            ←
           </Text>
         </Pressable>
 
@@ -256,382 +258,361 @@ export default function MenuManagementScreen() {
               { color: colors.secondaryText },
             ]}
           >
-            Manage restaurant menu
+            Manage prices, items and availability
           </Text>
         </View>
       </View>
 
-      {/* MENU LIST */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.list}
+      {/* Menu Count */}
+      <View
+        style={[
+          styles.summaryCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+          },
+        ]}
       >
-        {menu.length === 0 ? (
-          <View
+        <View>
+          <Text
             style={[
-              styles.emptyCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-              },
+              styles.summaryLabel,
+              { color: colors.secondaryText },
             ]}
           >
-            <Text
-              style={[
-                styles.emptyTitle,
-                { color: colors.text },
-              ]}
-            >
-              No Menu Items
-            </Text>
+            Total Menu Items
+          </Text>
 
-            <Text
-              style={[
-                styles.emptyText,
-                { color: colors.secondaryText },
-              ]}
-            >
-              There are currently no menu items.
-            </Text>
-          </View>
-        ) : (
-          menu.map((item) => {
-            const isEditing =
-              editingId === item.id;
+          <Text
+            style={[
+              styles.summaryNumber,
+              { color: colors.text },
+            ]}
+          >
+            {menuItems.length}
+          </Text>
+        </View>
 
-            return (
-              <View
-                key={item.id}
+        <Text style={styles.summaryEmoji}>🍔</Text>
+      </View>
+
+      {/* Menu Items */}
+      {menuItems.map((item) => (
+        <View
+          key={item.id}
+          style={[
+            styles.itemCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          {/* Item Header */}
+          <View style={styles.itemHeader}>
+            <View style={styles.itemTitleContainer}>
+              <Text
                 style={[
-                  styles.card,
+                  styles.itemName,
+                  { color: colors.text },
+                ]}
+              >
+                {item.name}
+              </Text>
+
+              <Text
+                style={[
+                  styles.itemCategory,
+                  { color: colors.secondaryText },
+                ]}
+              >
+                {item.category}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: item.isAvailable
+                    ? "#E4F7EA"
+                    : "#FDE8E8",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusText,
                   {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
+                    color: item.isAvailable
+                      ? "#2D8A43"
+                      : "#C0392B",
                   },
                 ]}
               >
-                {isEditing ? (
-                  <>
-                    <Text
-                      style={[
-                        styles.editTitle,
-                        { color: colors.text },
-                      ]}
-                    >
-                      Edit Menu Item
-                    </Text>
+                {item.isAvailable
+                  ? "AVAILABLE"
+                  : "UNAVAILABLE"}
+              </Text>
+            </View>
+          </View>
 
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { color: colors.secondaryText },
-                      ]}
-                    >
-                      NAME
-                    </Text>
+          {/* Edit Form */}
+          {editingId === item.id ? (
+            <View style={styles.editContainer}>
+              <TextInput
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Item name"
+                placeholderTextColor="#999"
+                style={[
+                  styles.input,
+                  {
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
 
-                    <TextInput
-                      value={editName}
-                      onChangeText={setEditName}
-                      placeholder="Item name"
-                      placeholderTextColor={
-                        colors.secondaryText
-                      }
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor:
-                            colors.background,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
+              <TextInput
+                value={editPrice}
+                onChangeText={setEditPrice}
+                placeholder="Price"
+                placeholderTextColor="#999"
+                keyboardType="numeric"
+                style={[
+                  styles.input,
+                  {
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
 
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { color: colors.secondaryText },
-                      ]}
-                    >
-                      PRICE
-                    </Text>
+              <TextInput
+                value={editCategory}
+                onChangeText={setEditCategory}
+                placeholder="Category"
+                placeholderTextColor="#999"
+                style={[
+                  styles.input,
+                  {
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
+              />
 
-                    <TextInput
-                      value={editPrice}
-                      onChangeText={setEditPrice}
-                      placeholder="Price"
-                      placeholderTextColor={
-                        colors.secondaryText
-                      }
-                      keyboardType="numeric"
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor:
-                            colors.background,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
+              <View style={styles.editButtons}>
+                <Pressable
+                  onPress={saveEdit}
+                  style={[
+                    styles.saveButton,
+                    {
+                      backgroundColor:
+                        colors.primary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.saveButtonText,
+                      {
+                        color:
+                          colors.primaryText,
+                      },
+                    ]}
+                  >
+                    Save
+                  </Text>
+                </Pressable>
 
-                    <Text
-                      style={[
-                        styles.inputLabel,
-                        { color: colors.secondaryText },
-                      ]}
-                    >
-                      CATEGORY
-                    </Text>
-
-                    <TextInput
-                      value={editCategory}
-                      onChangeText={setEditCategory}
-                      placeholder="Category"
-                      placeholderTextColor={
-                        colors.secondaryText
-                      }
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor:
-                            colors.background,
-                          borderColor: colors.border,
-                          color: colors.text,
-                        },
-                      ]}
-                    />
-
-                    <View style={styles.editActions}>
-                      <Pressable
-                        onPress={saveEdit}
-                        style={({ pressed }) => [
-                          styles.saveButton,
-                          {
-                            backgroundColor:
-                              colors.primary,
-                          },
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.saveText,
-                            {
-                              color:
-                                colors.primaryText,
-                            },
-                          ]}
-                        >
-                          Save Changes
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={cancelEditing}
-                        style={({ pressed }) => [
-                          styles.cancelButton,
-                          {
-                            backgroundColor:
-                              colors.background,
-                            borderColor:
-                              colors.border,
-                          },
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.cancelText,
-                            { color: colors.text },
-                          ]}
-                        >
-                          Cancel
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    {/* ITEM INFORMATION */}
-                    <View style={styles.cardTop}>
-                      <View style={styles.info}>
-                        <Text
-                          style={[
-                            styles.itemName,
-                            { color: colors.text },
-                          ]}
-                        >
-                          {item.name}
-                        </Text>
-
-                        <Text
-                          style={[
-                            styles.category,
-                            {
-                              color:
-                                colors.secondaryText,
-                            },
-                          ]}
-                        >
-                          {item.category}
-                        </Text>
-
-                        <Text
-                          style={[
-                            styles.price,
-                            {
-                              color: colors.primary,
-                            },
-                          ]}
-                        >
-                          Rs.{" "}
-                          {item.price.toLocaleString()}
-                        </Text>
-                      </View>
-
-                      <View style={styles.rightSide}>
-                        <View
-                          style={[
-                            styles.statusBadge,
-                            item.isAvailable
-                              ? styles.available
-                              : styles.unavailable,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.statusText,
-                              item.isAvailable
-                                ? styles.availableText
-                                : styles.unavailableText,
-                            ]}
-                          >
-                            {item.isAvailable
-                              ? "Available"
-                              : "Unavailable"}
-                          </Text>
-                        </View>
-
-                        <Pressable
-                          onPress={() =>
-                            toggleAvailability(
-                              item.id
-                            )
-                          }
-                          style={({ pressed }) => [
-                            styles.toggleButton,
-                            {
-                              backgroundColor:
-                                colors.primary,
-                            },
-                            pressed &&
-                              styles.pressed,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.toggleText,
-                              {
-                                color:
-                                  colors.primaryText,
-                              },
-                            ]}
-                          >
-                            {item.isAvailable
-                              ? "Disable"
-                              : "Enable"}
-                          </Text>
-                        </Pressable>
-                      </View>
-                    </View>
-
-                    {/* ACTIONS */}
-                    <View style={styles.actionRow}>
-                      <Pressable
-                        onPress={() =>
-                          startEditing(item)
-                        }
-                        style={({ pressed }) => [
-                          styles.editButton,
-                          {
-                            backgroundColor:
-                              colors.background,
-                            borderColor:
-                              colors.border,
-                          },
-                          pressed &&
-                            styles.pressed,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.editButtonText,
-                            { color: colors.text },
-                          ]}
-                        >
-                          ✏ Edit
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() =>
-                          deleteItem(item.id)
-                        }
-                        style={({ pressed }) => [
-                          styles.deleteButton,
-                          pressed &&
-                            styles.pressed,
-                        ]}
-                      >
-                        <Text
-                          style={
-                            styles.deleteButtonText
-                          }
-                        >
-                          🗑 Delete
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </>
-                )}
+                <Pressable
+                  onPress={cancelEditing}
+                  style={[
+                    styles.cancelButton,
+                    {
+                      borderColor:
+                        colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </Pressable>
               </View>
-            );
-          })
-        )}
-      </ScrollView>
-    </View>
+            </View>
+          ) : (
+            <>
+              {/* Price */}
+              <Text
+                style={[
+                  styles.price,
+                  { color: colors.primary },
+                ]}
+              >
+                Rs. {item.price.toLocaleString()}
+              </Text>
+
+              {/* Actions */}
+              <View style={styles.actions}>
+                <Pressable
+                  onPress={() =>
+                    handleToggleAvailability(
+                      item.id,
+                      item.isAvailable
+                    )
+                  }
+                  style={[
+                    styles.actionButton,
+                    {
+                      borderColor:
+                        colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.actionButtonText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    {item.isAvailable
+                      ? "Disable"
+                      : "Enable"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() =>
+                    startEditing(item)
+                  }
+                  style={[
+                    styles.actionButton,
+                    {
+                      borderColor:
+                        colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.actionButtonText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Edit
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() =>
+                    deleteItem(
+                      item.id,
+                      item.name
+                    )
+                  }
+                  style={[
+                    styles.deleteButton,
+                    {
+                      backgroundColor:
+                        "#FDE8E8",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={styles.deleteButtonText}
+                  >
+                    Delete
+                  </Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      ))}
+
+      {menuItems.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: colors.secondaryText },
+            ]}
+          >
+            No menu items found.
+          </Text>
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+  },
+
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 55,
+    paddingBottom: 45,
+  },
+
+  centerContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 30,
+  },
+
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  errorText: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 20,
+  },
+
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+
+  backButtonText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 25,
   },
 
-  backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  backIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
+    marginRight: 12,
   },
 
-  backText: {
-    fontSize: 32,
-    lineHeight: 34,
-    marginTop: -4,
+  backIcon: {
+    fontSize: 22,
+    fontWeight: "700",
   },
 
   headerTextContainer: {
@@ -639,202 +620,165 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: 25,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "900",
   },
 
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  summaryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 17,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  summaryNumber: {
+    fontSize: 28,
+    fontWeight: "900",
     marginTop: 3,
   },
 
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+  summaryEmoji: {
+    fontSize: 30,
   },
 
-  card: {
+  itemCard: {
     borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
     borderWidth: 1,
+    padding: 16,
+    marginBottom: 13,
   },
 
-  cardTop: {
+  itemHeader: {
     flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    alignItems: "center",
   },
 
-  info: {
+  itemTitleContainer: {
     flex: 1,
-    paddingRight: 12,
+    marginRight: 10,
   },
 
   itemName: {
     fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 5,
+    fontWeight: "900",
   },
 
-  category: {
-    fontSize: 12,
-    marginBottom: 7,
-  },
-
-  price: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  rightSide: {
-    alignItems: "flex-end",
+  itemCategory: {
+    fontSize: 11,
+    marginTop: 4,
   },
 
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 9,
-  },
-
-  available: {
-    backgroundColor: "#E4F7EA",
-  },
-
-  unavailable: {
-    backgroundColor: "#FDE7E7",
+    borderRadius: 8,
   },
 
   statusText: {
-    fontSize: 10,
-    fontWeight: "800",
+    fontSize: 8,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
 
-  availableText: {
-    color: "#267A3D",
+  price: {
+    fontSize: 17,
+    fontWeight: "900",
+    marginTop: 15,
+    marginBottom: 14,
   },
 
-  unavailableText: {
-    color: "#B33A3A",
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
-  toggleButton: {
+  actionButton: {
+    borderWidth: 1,
+    borderRadius: 10,
     paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 9,
+    paddingVertical: 9,
+    marginRight: 8,
   },
 
-  toggleText: {
+  actionButtonText: {
     fontSize: 11,
     fontWeight: "800",
   },
 
-  actionRow: {
-    flexDirection: "row",
-    marginTop: 16,
-    gap: 10,
-  },
-
-  editButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
-  },
-
-  editButtonText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
-
   deleteButton: {
-    flex: 1,
-    backgroundColor: "#FDE7E7",
-    paddingVertical: 10,
     borderRadius: 10,
-    alignItems: "center",
+    paddingHorizontal: 13,
+    paddingVertical: 9,
   },
 
   deleteButtonText: {
-    color: "#B33A3A",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
+    color: "#C0392B",
   },
 
-  editTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 18,
-  },
-
-  inputLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 7,
+  editContainer: {
+    marginTop: 15,
   },
 
   input: {
-    height: 50,
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    marginBottom: 14,
+    borderRadius: 11,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    marginBottom: 9,
   },
 
-  editActions: {
+  editButtons: {
     flexDirection: "row",
-    gap: 10,
     marginTop: 3,
   },
 
   saveButton: {
-    flex: 1,
-    paddingVertical: 12,
     borderRadius: 10,
-    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    marginRight: 8,
   },
 
-  saveText: {
-    fontSize: 12,
+  saveButtonText: {
+    fontSize: 11,
     fontWeight: "800",
   },
 
   cancelButton: {
-    flex: 1,
-    paddingVertical: 12,
+    borderWidth: 1,
     borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
 
-  cancelText: {
-    fontSize: 12,
+  cancelButtonText: {
+    fontSize: 11,
     fontWeight: "800",
   },
 
-  emptyCard: {
-    borderRadius: 18,
-    padding: 30,
+  emptyContainer: {
     alignItems: "center",
-    borderWidth: 1,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    marginBottom: 7,
+    paddingVertical: 35,
   },
 
   emptyText: {
     fontSize: 13,
-  },
-
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.97 }],
   },
 });

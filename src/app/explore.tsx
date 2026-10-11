@@ -53,7 +53,12 @@ const sortOptions = [
 export default function ExploreScreen() {
   const { state, addItem } = useCart();
   const { colors } = useTheme();
-  const { menuItems: sharedMenuItems } = useMenu();
+  const {
+    menuItems: sharedMenuItems,
+    isLoading,
+    error,
+    refreshMenu,
+  } = useMenu();
 
   const [selectedCategory, setSelectedCategory] =
     useState("All");
@@ -70,13 +75,8 @@ export default function ExploreScreen() {
   const [selectedSort, setSelectedSort] =
     useState("Default");
 
-  const [isLoading, setIsLoading] =
-    useState(true);
-
   const [isRefreshing, setIsRefreshing] =
     useState(false);
-
-  const [error, setError] = useState("");
 
   const [showBackToTop, setShowBackToTop] =
     useState(false);
@@ -93,22 +93,6 @@ export default function ExploreScreen() {
 
   const flatListRef =
     useRef<FlatList<MenuItem>>(null);
-
-  /*
-   * Load shared menu
-   */
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        setIsLoading(false);
-      } catch {
-        setError("Unable to load menu.");
-        setIsLoading(false);
-      }
-    }, 800);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   /*
    * Search debounce
@@ -249,26 +233,18 @@ export default function ExploreScreen() {
   /*
    * Pull to refresh
    */
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setError("");
-
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 800);
-  }, []);
+    await refreshMenu();
+    setIsRefreshing(false);
+  }, [refreshMenu]);
 
   /*
    * Retry
    */
   const handleRetry = useCallback(() => {
-    setIsLoading(true);
-    setError("");
-
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-  }, []);
+    refreshMenu();
+  }, [refreshMenu]);
 
   /*
    * Clear search

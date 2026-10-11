@@ -372,6 +372,8 @@ export default function LoginScreen() {
                 secureTextEntry={
                   !showPassword
                 }
+                autoCapitalize="none"
+                autoCorrect={false}
                 style={[
                   styles.input,
                   {

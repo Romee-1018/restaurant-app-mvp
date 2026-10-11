@@ -1,11 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createContext,
   ReactNode,
   useContext,
+  useEffect,
   useState,
 } from "react";
 
-import users from "../data/users";
+import { request, setAuthToken } from "../api/client";
 
 type User = {
   id: string;
@@ -14,17 +16,11 @@ type User = {
   role: "customer" | "manager";
 };
 
-type StoredUser = User & {
-  password: string;
-};
-
 type AuthContextType = {
   user: User | null;
+  token: string | null;
 
-  login: (
-    email: string,
-    password: string
-  ) => Promise<User | null>;
+  login: (email: string, password: string) => Promise<User | null>;
 
   signup: (
     name: string,
@@ -36,130 +32,104 @@ type AuthContextType = {
   logout: () => Promise<void>;
 };
 
-const AuthContext = createContext<
-  AuthContextType | undefined
->(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Temporary users created during app runtime
-const runtimeUsers: StoredUser[] = [];
+const STORAGE_KEY = "@auth_session";
 
-export function AuthProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  // LOGIN
+  // Save session in state, in the API client and in AsyncStorage
+  const saveSession = async (newToken: string, serverUser: any) => {
+    const sessionUser: User = {
+      id: serverUser.email,
+      name: serverUser.name,
+      email: serverUser.email,
+      role: serverUser.role,
+    };
+
+    setAuthToken(newToken);
+    setToken(newToken);
+    setUser(sessionUser);
+
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ token: newToken, user: sessionUser })
+    );
+
+    return sessionUser;
+  };
+
+  // Keep the user logged in after the app is closed and opened again
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setAuthToken(parsed.token);
+          setToken(parsed.token);
+          setUser(parsed.user);
+        }
+      } catch (error) {
+        console.log("Could not restore session", error);
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  // LOGIN -> POST /api/auth/login
   const login = async (
     email: string,
     password: string
   ): Promise<User | null> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const cleanEmail = email.trim().toLowerCase();
+    try {
+      const data = await request("/api/auth/login", {
+        method: "POST",
+        body: { email: email.trim(), password },
+      });
 
-        const originalUser = users.find(
-          (item) =>
-            item.email.trim().toLowerCase() ===
-              cleanEmail &&
-            item.password === password
-        );
-
-        const newUser = runtimeUsers.find(
-          (item) =>
-            item.email.trim().toLowerCase() ===
-              cleanEmail &&
-            item.password === password
-        );
-
-        const foundUser = originalUser || newUser;
-
-        if (!foundUser) {
-          resolve(null);
-          return;
-        }
-
-        const loggedInUser: User = {
-          id: foundUser.id,
-          name: foundUser.name,
-          email: foundUser.email,
-          role: foundUser.role as
-            | "customer"
-            | "manager",
-        };
-
-        setUser(loggedInUser);
-
-        resolve(loggedInUser);
-      }, 800);
-    });
+      return await saveSession(data.token, data.user);
+    } catch (error) {
+      console.log("Login failed:", (error as Error).message);
+      return null;
+    }
   };
 
-  // SIGNUP
+  // SIGNUP -> POST /api/auth/register
+  // The server always creates a "customer"; the role sent from the app is ignored.
   const signup = async (
     name: string,
     email: string,
     password: string,
     role: "customer" | "manager"
   ): Promise<boolean> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const cleanEmail = email.trim().toLowerCase();
+    try {
+      const data = await request("/api/auth/register", {
+        method: "POST",
+        body: { name: name.trim(), email: email.trim(), password },
+      });
 
-        const alreadyExists =
-          users.some(
-            (item) =>
-              item.email.trim().toLowerCase() ===
-              cleanEmail
-          ) ||
-          runtimeUsers.some(
-            (item) =>
-              item.email.trim().toLowerCase() ===
-              cleanEmail
-          );
-
-        if (alreadyExists) {
-          resolve(false);
-          return;
-        }
-
-        const newUser: StoredUser = {
-          id: Date.now().toString(),
-          name: name.trim(),
-          email: email.trim(),
-          password,
-          role,
-        };
-
-        runtimeUsers.push(newUser);
-
-        setUser({
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        });
-
-        resolve(true);
-      }, 800);
-    });
+      await saveSession(data.token, data.user);
+      return true;
+    } catch (error) {
+      console.log("Signup failed:", (error as Error).message);
+      return false;
+    }
   };
 
-  // LOGOUT
+  // LOGOUT clears the state, the API client and AsyncStorage
   const logout = async () => {
+    setAuthToken(null);
+    setToken(null);
     setUser(null);
+    await AsyncStorage.removeItem(STORAGE_KEY);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        login,
-        signup,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -169,9 +139,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error(
-      "useAuth must be used inside AuthProvider"
-    );
+    throw new Error("useAuth must be used inside AuthProvider");
   }
 
   return context;

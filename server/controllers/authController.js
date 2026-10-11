@@ -62,7 +62,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
+         
     if (!email || !password) {
       return res
         .status(400)
@@ -70,7 +70,7 @@ const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });
-
+            
     // Same message for wrong email and wrong password, so attackers learn nothing
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: "Invalid email or password" });
