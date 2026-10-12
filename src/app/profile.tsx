@@ -159,6 +159,24 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {/* My Reservations (customers only) */}
+        {user.role !== "manager" && (
+          <Pressable
+            style={[
+              styles.logoutButton,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={() => router.push("/my-reservations")}
+          >
+            <Text style={[styles.logoutText, { color: colors.text }]}>
+              My Reservations
+            </Text>
+          </Pressable>
+        )}
+
         {/* Logout */}
         <Pressable
           style={[

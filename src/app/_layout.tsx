@@ -34,6 +34,7 @@ export default function RootLayout() {
                 <Stack.Screen name="order-confirmation" />
                 <Stack.Screen name="order-tracking" />
                 <Stack.Screen name="profile" />
+                <Stack.Screen name="my-reservations" />
 
                 {/* Manager Screens */}
                 <Stack.Screen name="manager-dashboard" />

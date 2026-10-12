@@ -1,5 +1,8 @@
 import { router } from "expo-router";
+import { useEffect } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,11 +16,27 @@ import { useReservation } from "@/hooks/useReservation";
 export default function ReservationsScreen() {
   const {
     reservations,
-    confirmReservation,
-    cancelReservation,
+    loading,
+    error,
+    loadAllReservations,
+    decideReservation,
   } = useReservation();
 
   const { colors } = useTheme();
+
+  useEffect(() => {
+    loadAllReservations();
+  }, [loadAllReservations]);
+
+  const handleDecision = async (
+    id: string,
+    status: "Accepted" | "Declined"
+  ) => {
+    const result = await decideReservation(id, status);
+    if (!result.success) {
+      Alert.alert("Could not update", result.message);
+    }
+  };
 
   return (
     <View
@@ -31,7 +50,7 @@ export default function ReservationsScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.replace("/explore")}
+          onPress={() => router.back()}
           style={[
             styles.backButton,
             {
@@ -77,6 +96,28 @@ export default function ReservationsScreen() {
         </View>
       </View>
 
+      {/* LOADING / ERROR */}
+      {loading && reservations.length === 0 && (
+        <ActivityIndicator style={styles.loader} color={colors.primary} />
+      )}
+
+      {error !== "" && (
+        <Text style={styles.errorText}>{error}</Text>
+      )}
+
+      {!loading && error === "" && reservations.length === 0 && (
+        <Text
+          style={[
+            styles.emptyText,
+            {
+              color: colors.secondaryText,
+            },
+          ]}
+        >
+          No reservations yet.
+        </Text>
+      )}
+
       {/* RESERVATIONS */}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -84,7 +125,7 @@ export default function ReservationsScreen() {
       >
         {reservations.map((reservation) => (
           <View
-            key={reservation.id}
+            key={reservation._id}
             style={[
               styles.card,
               {
@@ -103,23 +144,18 @@ export default function ReservationsScreen() {
                   },
                 ]}
               >
-                {reservation.id}
+                Table {reservation.table?.tableNumber ?? "-"}
               </Text>
 
               <View
                 style={[
                   styles.statusBadge,
-                  reservation.status === "Pending" &&
-                    styles.pending,
-                  reservation.status === "Confirmed" &&
-                    styles.confirmed,
-                  reservation.status === "Cancelled" &&
-                    styles.cancelled,
+                  reservation.status === "Pending" && styles.pending,
+                  reservation.status === "Accepted" && styles.confirmed,
+                  reservation.status === "Declined" && styles.cancelled,
                 ]}
               >
-                <Text style={styles.statusText}>
-                  {reservation.status}
-                </Text>
+                <Text style={styles.statusText}>{reservation.status}</Text>
               </View>
             </View>
 
@@ -132,7 +168,7 @@ export default function ReservationsScreen() {
                 },
               ]}
             >
-              Customer: {reservation.customer}
+              Customer: {reservation.user?.name ?? "Unknown"}
             </Text>
 
             {/* DATE */}
@@ -175,9 +211,7 @@ export default function ReservationsScreen() {
             {reservation.status === "Pending" && (
               <View style={styles.actions}>
                 <Pressable
-                  onPress={() =>
-                    confirmReservation(reservation.id)
-                  }
+                  onPress={() => handleDecision(reservation._id, "Accepted")}
                   style={({ pressed }) => [
                     styles.confirmButton,
                     {
@@ -194,22 +228,18 @@ export default function ReservationsScreen() {
                       },
                     ]}
                   >
-                    Confirm
+                    Accept
                   </Text>
                 </Pressable>
 
                 <Pressable
-                  onPress={() =>
-                    cancelReservation(reservation.id)
-                  }
+                  onPress={() => handleDecision(reservation._id, "Declined")}
                   style={({ pressed }) => [
                     styles.cancelButton,
                     pressed && styles.buttonPressed,
                   ]}
                 >
-                  <Text style={styles.cancelText}>
-                    Cancel
-                  </Text>
+                  <Text style={styles.cancelText}>Decline</Text>
                 </Pressable>
               </View>
             )}
@@ -257,6 +287,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     marginTop: 3,
+  },
+
+  loader: {
+    marginTop: 30,
+  },
+
+  errorText: {
+    color: "#B33A3A",
+    fontSize: 14,
+    fontWeight: "700",
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+
+  emptyText: {
+    fontSize: 14,
+    paddingHorizontal: 20,
   },
 
   list: {

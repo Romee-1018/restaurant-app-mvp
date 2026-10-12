@@ -1,6 +1,6 @@
 // The ONLY place where the server address is written.
 // Use your laptop's IPv4 address (run `ipconfig`). Android emulator: http://10.0.2.2:5000
-export const BASE_URL = "http://192.168.1.5:5000";
+   export const BASE_URL = "http://192.168.1.7:5000";
 
 let authToken = null;
 
