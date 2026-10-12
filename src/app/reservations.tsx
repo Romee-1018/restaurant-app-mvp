@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+ import { router } from "expo-router";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
@@ -11,31 +11,35 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/context/ThemeContext";
-import { useReservation } from "@/hooks/useReservation";
+import useApi from "@/hooks/useApi";
+import { useReservation, type Reservation } from "@/hooks/useReservation";
 
 export default function ReservationsScreen() {
-  const {
-    reservations,
-    loading,
-    error,
-    loadAllReservations,
-    decideReservation,
-  } = useReservation();
-
+  const { decideReservation } = useReservation();
   const { colors } = useTheme();
 
+  // useApi loads all bookings from the server: { data, loading, error, refetch }
+  const { data, loading, error, refetch } = useApi("/api/reservations");
+  const reservations: Reservation[] = data ?? [];
+
+  // Refresh every 10 seconds so new customer bookings appear
   useEffect(() => {
-    loadAllReservations();
-  }, [loadAllReservations]);
+    const id = setInterval(refetch, 10000);
+    return () => clearInterval(id);
+  }, [refetch]);
 
   const handleDecision = async (
     id: string,
     status: "Accepted" | "Declined"
   ) => {
     const result = await decideReservation(id, status);
+
     if (!result.success) {
       Alert.alert("Could not update", result.message);
+      return;
     }
+
+    refetch();
   };
 
   return (
@@ -101,11 +105,9 @@ export default function ReservationsScreen() {
         <ActivityIndicator style={styles.loader} color={colors.primary} />
       )}
 
-      {error !== "" && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {!loading && error === "" && reservations.length === 0 && (
+      {!loading && !error && reservations.length === 0 && (
         <Text
           style={[
             styles.emptyText,

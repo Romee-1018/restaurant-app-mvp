@@ -12,7 +12,8 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/context/ThemeContext";
-import { useReservation } from "@/hooks/useReservation";
+import useApi from "@/hooks/useApi";
+import { useReservation, type Reservation } from "@/hooks/useReservation";
 
 function todayString() {
   const d = new Date();
@@ -24,16 +25,12 @@ function todayString() {
 export default function MyReservationsScreen() {
   const { colors } = useTheme();
 
-  const {
-    reservations,
-    tables,
-    loading,
-    error,
-    timeSlots,
-    loadMyReservations,
-    loadTables,
-    createReservation,
-  } = useReservation();
+  const { tables, timeSlots, loadTables, createReservation } =
+    useReservation();
+
+  // useApi loads my bookings from the server: { data, loading, error, refetch }
+  const { data, loading, error, refetch } = useApi("/api/reservations/my");
+  const reservations: Reservation[] = data ?? [];
 
   const [date, setDate] = useState(todayString());
   const [time, setTime] = useState("");
@@ -43,10 +40,9 @@ export default function MyReservationsScreen() {
 
   // Poll every 10 seconds so the customer sees Accepted/Declined without restarting
   useEffect(() => {
-    loadMyReservations();
-    const id = setInterval(loadMyReservations, 10000);
+    const id = setInterval(refetch, 10000);
     return () => clearInterval(id);
-  }, [loadMyReservations]);
+  }, [refetch]);
 
   // Ask the server which tables are free at this date and time
   useEffect(() => {
@@ -64,7 +60,7 @@ export default function MyReservationsScreen() {
     if (result.success) {
       Alert.alert("Requested", "Your booking is waiting for the manager.");
       setTableId("");
-      loadMyReservations();
+      refetch();
       loadTables(date, time);
       return;
     }
@@ -240,9 +236,9 @@ export default function MyReservationsScreen() {
           <ActivityIndicator color={colors.primary} />
         )}
 
-        {error !== "" && <Text style={styles.errorText}>{error}</Text>}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {!loading && error === "" && reservations.length === 0 && (
+        {!loading && !error && reservations.length === 0 && (
           <Text style={[styles.hint, subText]}>No bookings yet.</Text>
         )}
 
