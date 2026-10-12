@@ -1,8 +1,149 @@
+## Assignment 2 — Backend and Database (Fall 2026)
+
+Assignment 2 extends the Assignment 1 app with a **Node.js / Express API server** and a **MongoDB Atlas** database. The app now loads and saves data through the server, so a manager's change appears on every customer's device.
+
+```text
+React Native / Expo App  →  Express API Server  →  MongoDB Atlas
+```
+
+Documents and test evidence are in the [`A2/`](A2/) folder:
+
+- [`A2/SRS_v2.pdf`](A2/SRS_v2.pdf): updated SRS (database design, API design, diagrams)
+- [`A2/restaurant-api.postman_collection.json`](A2/restaurant-api.postman_collection.json): Postman collection
+- [`A2/screenshots/`](A2/screenshots/): test screenshots
+
+### Demo video
+
+[Watch the two-device demo (under 4 minutes)](PASTE_VIDEO_LINK_HERE)
+
+---
+
+### Run the server
+
+Requirements: Node.js, npm, and a free MongoDB Atlas cluster.
+
+1. Install the server packages:
+
+```bash
+cd server
+npm install
+```
+
+2. Create the `.env` file from the example (Windows PowerShell: `copy .env.example .env`):
+
+```bash
+cp .env.example .env
+```
+
+3. Open `server/.env` and fill in the values:
+
+```text
+PORT=5000
+MONGO_URI=<your MongoDB Atlas connection string, database name restaurant_app>
+JWT_SECRET=<any long random text>
+```
+
+`.env` is ignored by Git. Never commit real passwords or secrets. In Atlas, add your current IP under **Network Access**.
+
+4. Add the starting data (2 users, 16 menu items, 6 tables). This clears the old data first:
+
+```bash
+npm run seed
+```
+
+5. Start the server:
+
+```bash
+npm run dev
+```
+
+You should see `MongoDB connected` and `Server running on port 5000`. Check it at `http://localhost:5000/api/health`.
+
+### Run the app
+
+From the project root:
+
+```bash
+npm install
+npx expo start
+```
+
+Open the app in Expo Go. The phone and the laptop must be on the same Wi-Fi.
+
+### Where to change BASE_URL
+
+Open `src/api/client.js` and change this one line to your laptop's IPv4 address (run `ipconfig` and read the Wi-Fi IPv4 Address):
+
+```js
+export const BASE_URL = "http://192.168.1.5:5000";
+```
+
+The laptop IP can change when the router restarts, so check it again if the app cannot reach the server. On a Windows laptop, allow ports 5000 and 8081 in the firewall.
+
+### Seeded login details
+
+| Role | Email | Password |
+|---|---|---|
+| Manager | manager@restaurant.com | manager123 |
+| Customer | ali@example.com | customer123 |
+
+New signups are always created as **customers**. Passwords are stored hashed (bcrypt). These are demo accounts created by `npm run seed`.
+
+---
+
+### API endpoints
+
+Base URL: `http://<laptop-ip>:5000`. Protected routes need the header `Authorization: Bearer <token>`. The token comes from the login endpoint and expires in one day.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/health` | Public | Server health check |
+| POST | `/api/auth/register` | Public | Create a customer account (409 if the email exists) |
+| POST | `/api/auth/login` | Public | Log in and get a token, name, email and role |
+| GET | `/api/menu` | Public | List menu items (optional `category` and `search` query) |
+| GET | `/api/menu/:id` | Public | Get one menu item |
+| POST | `/api/menu` | Manager | Add a menu item |
+| PUT | `/api/menu/:id` | Manager | Edit a menu item |
+| DELETE | `/api/menu/:id` | Manager | Delete a menu item |
+| POST | `/api/orders` | Logged in | Place an order (total is calculated by the server) |
+| GET | `/api/orders/my` | Logged in | The customer's own orders |
+| GET | `/api/orders` | Manager | All orders |
+| PATCH | `/api/orders/:id/status` | Logged in | Change order status (customers may only cancel their own Pending order) |
+| GET | `/api/tables` | Logged in | List tables with availability |
+| POST | `/api/reservations` | Logged in | Reserve a table (400 if too many guests, 409 if already booked) |
+| GET | `/api/reservations/my` | Logged in | The customer's own reservations |
+| GET | `/api/reservations` | Manager | All reservations |
+| PATCH | `/api/reservations/:id` | Manager | Accept or decline a reservation |
+
+**Business rules**
+
+- Order status moves only forward: `Pending → Preparing → Ready → Served`. An order can be cancelled only while it is `Pending`. Any other change returns 400.
+- The server rejects unavailable menu items and never trusts a total sent by the app.
+- Invalid IDs return 400, missing items return 404, no token returns 401, and the wrong role returns 403.
+
+---
+
+### Screenshots
+
+| Question | Screenshot |
+|---|---|
+| Q2: health route in Postman | ![Q2 Postman](A2/screenshots/Q2_postman_health.png) |
+| Q2: health route on the phone | ![Q2 phone](A2/screenshots/Q2_phone_health.png) |
+| Q3: `menuitems` collection in Atlas | ![Q3 menuitems](A2/screenshots/Q3_menuitems_collection.png) |
+| Q4: request that works (200) | ![Q4 success](A2/screenshots/Q4_success_200.png) |
+| Q4: request that fails (400) | ![Q4 failure](A2/screenshots/Q4_failure_400.png) |
+| Q5: no token (401) | ![Q5 401](A2/screenshots/Q5_no_token_401.png) |
+| Q5: customer token (403) | ![Q5 403](A2/screenshots/Q5_customer_403.png) |
+| Q5: manager token (201) | ![Q5 201](A2/screenshots/Q5_manager_201.png) |
+| Q6: manager changes a price on the phone | ![Q6 manager](A2/screenshots/Q6_manager_phone.jpeg) |
+| Q6: customer sees the new price | ![Q6 customer](A2/screenshots/Q6_customer_browser.png) |
+
+---
 # Savoria Restaurant App MVP
 
-Restaurant App MVP developed for **Assignment No. 1 — Fall 2026**.
+Restaurant App MVP developed for **Assignment No. 1 and Assignment No. 2 — Fall 2026**.
 
-Savoria is a **frontend-only React Native restaurant application** developed using Expo and Expo Router. The application demonstrates customer and restaurant-manager workflows using React state/hooks, Context, reducers, custom hooks, local mock data, and AsyncStorage.
+Savoria is a **React Native restaurant application** built with Expo and Expo Router. Assignment 1 built the frontend with local mock data. Assignment 2 (the section above) connects it to an Express API server and a MongoDB database.
 
 ---
 
@@ -61,36 +202,23 @@ Savoria provides the following main functionality.
 
 ## 2. Technology Stack
 
-- React Native
-- Expo
-- Expo Router
+### App
+
+- React Native, Expo, Expo Router
 - TypeScript / JavaScript
-- React Hooks
-- Context API
-- useReducer
-- Custom Hooks
-- AsyncStorage
-- Local Mock Data
+- React Hooks, Context API, useReducer, custom hooks
+- AsyncStorage (keeps the login session)
 
-### Backend
+### Backend (Assignment 2)
 
-This MVP is frontend-only.
+- Node.js and Express
+- MongoDB Atlas with Mongoose
+- JSON Web Tokens (jsonwebtoken) and bcryptjs for authentication
+- dotenv, cors, nodemon
 
-It does **not** require:
-
-- Backend service
-- Cloud database
-- Firebase
-- External restaurant API
-- Real payment processing
-- Push notifications
-- Production analytics
-- Real-time server synchronization
-
-Application data is handled locally using mock data, React state, Context, reducers, custom hooks, and AsyncStorage.
+Real payments and push notifications are still out of scope.
 
 ---
-
 ## 3. Project Structure
 
 ```text
@@ -176,39 +304,11 @@ The application can also be opened using the web option provided by the Expo dev
 
 ---
 
-## 6. Mock Authentication
+## 6. Authentication
 
-Authentication is implemented using local mock users.
+Login and signup use the Express server (`POST /api/auth/login` and `POST /api/auth/register`). The server returns a token, which the app keeps in AuthContext and AsyncStorage. Logging out clears both.
 
-The user data is stored in:
-
-```text
-src/data/users.js
-```
-
-### Customer Demo Account
-
-```text
-Name: Roman
-Email: roman@gmail.com
-Password: Roman123
-Role: customer
-```
-
-### Manager Account
-
-```text
-Email: manager@gmail.com
-Role: manager
-```
-
-The manager password is stored in the local mock users file:
-
-```text
-src/data/users.js
-```
-
-The application does not use a remote authentication server.
+The seeded demo accounts are listed in the Assignment 2 section at the top of this file. The old mock users file (`src/data/users.js`) was removed in Assignment 2.
 
 ---
 
@@ -799,7 +899,7 @@ Final demonstration video:
 To be added
 ```## 26. Demo Video
 
-Final demonstration video:
+Final demonstration video: 
 
 https://drive.google.com/file/d/1lj2anYLSFrVmAn7Emsj3wZtTz-Sit8xK/view?usp=sharing
 
