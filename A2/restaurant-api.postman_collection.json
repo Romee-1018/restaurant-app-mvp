@@ -398,6 +398,17 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Tables - list",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
     }
   ]
 }
