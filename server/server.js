@@ -7,6 +7,7 @@ const menuRoutes = require("./routes/menuRoutes");
 const authRoutes = require("./routes/authRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const reservationRoutes = require("./routes/reservationRoutes");
+const tableRoutes = require("./routes/tableRoutes");
 const app = express();
 
 app.use(cors());
@@ -17,7 +18,7 @@ app.use("/api/menu", menuRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reservations", reservationRoutes);
-
+app.use("/api/tables", tableRoutes);
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({
