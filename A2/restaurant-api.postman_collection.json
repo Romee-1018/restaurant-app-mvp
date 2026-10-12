@@ -354,26 +354,50 @@
         }
       },
       "response": []
-    }
-  ],
-  "auth": {
-    "type": "bearer",
-    "bearer": [
-      {
-        "key": "token",
-        "value": "{{json_web_token_1akc}}",
-        "type": "string"
-      }
-    ]
-  },
-  "variable": [
-    {
-      "key": "json_web_token_02ag",
-      "secret": true
     },
     {
-      "key": "json_web_token_1akc",
-      "secret": true
+      "name": "Place order - customer",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Order status - invalid (should fail)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Reservation - create",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Reservation - accept",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
     }
   ]
 }

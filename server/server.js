@@ -5,7 +5,8 @@ require("dotenv").config();
 const connectDB = require("./config/db");
 const menuRoutes = require("./routes/menuRoutes");
 const authRoutes = require("./routes/authRoutes");
-
+const orderRoutes = require("./routes/orderRoutes");
+const reservationRoutes = require("./routes/reservationRoutes");
 const app = express();
 
 app.use(cors());
@@ -14,6 +15,8 @@ app.use(express.json());
 // Menu API
 app.use("/api/menu", menuRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/reservations", reservationRoutes);
 
 // Health check
 app.get("/api/health", (req, res) => {
