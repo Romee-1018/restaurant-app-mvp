@@ -9,8 +9,8 @@ import {
   View,
 } from "react-native";
 
-import { request } from "@/api/client";
 import { useCart } from "@/context/CartContext";
+import { useOrders } from "@/context/OrdersContext";
 import { useTheme } from "@/context/ThemeContext";
 
 const SERVICE_CHARGE_RATE = 0.05;
@@ -18,6 +18,7 @@ const SALES_TAX_RATE = 0.15;
 
 export default function OrderSummaryScreen() {
   const { state, clearCart } = useCart();
+  const { createOrder } = useOrders();
   const { colors } = useTheme();
 
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -58,21 +59,24 @@ export default function OrderSummaryScreen() {
     setIsPlacingOrder(true);
 
     try {
-      const orderData = await request("/api/orders", {
-        method: "POST",
-        body: {
-          items: state.items.map((item) => ({
-            menuItem: item.id,
-            quantity: item.quantity,
-          })),
-        },
+      // Only item ids and quantities go to the server.
+      // The server works out the total from database prices.
+      const order = await createOrder({
+        items: state.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          note: item.note,
+        })),
+        type: "Takeaway",
       });
 
       clearCart();
 
       router.replace({
         pathname: "/order-tracking",
-        params: { orderId: orderData._id },
+        params: { orderId: order.id },
       });
     } catch (error) {
       Alert.alert(

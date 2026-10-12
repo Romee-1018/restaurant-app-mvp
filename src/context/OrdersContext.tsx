@@ -1,12 +1,14 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
-  useReducer,
   useState,
 } from "react";
+
+import { request } from "@/api/client";
+import { useAuth } from "@/context/AuthContext";
 
 export type OrderStatus =
   | "Pending"
@@ -34,258 +36,169 @@ export type Order = {
   pickupTime?: string;
   status: OrderStatus;
   timestamp: string;
-};
-
-type OrdersState = {
-  orders: Order[];
+  customer?: string;
 };
 
 type CreateOrderPayload = {
   items: OrderItem[];
-  total: number;
-  type: OrderType;
+  // Not sent to the server. The server works out the total itself.
+  total?: number;
+  type?: OrderType;
   table?: string;
   pickupTime?: string;
 };
 
-type OrdersAction =
-  | {
-      type: "CREATE_ORDER";
-      payload: CreateOrderPayload;
-    }
-  | {
-      type: "UPDATE_STATUS";
-      payload: {
-        orderId: string;
-        status: OrderStatus;
-      };
-    }
-  | {
-      type: "CANCEL_ORDER";
-      payload: string;
-    }
-  | {
-      type: "CLEAR_ORDERS";
-    }
-  | {
-      type: "LOAD_ORDERS";
-      payload: Order[];
-    };
-
-const ORDERS_STORAGE_KEY = "@savoria_orders";
-
-const initialState: OrdersState = {
-  orders: [],
+// The shape the server sends
+type ServerOrder = {
+  _id: string;
+  user?: { name?: string } | string;
+  items: {
+    menuItem: string;
+    name: string;
+    quantity: number;
+    price: number;
+  }[];
+  totalAmount: number;
+  status: OrderStatus;
+  createdAt: string;
 };
 
-function ordersReducer(
-  state: OrdersState,
-  action: OrdersAction
-): OrdersState {
-  switch (action.type) {
-    case "CREATE_ORDER": {
-      const newOrder: Order = {
-        id: `SV-${Date.now().toString().slice(-6)}`,
-        items: action.payload.items,
-        total: action.payload.total,
-        type: action.payload.type,
-        table: action.payload.table,
-        pickupTime: action.payload.pickupTime,
-        status: "Pending",
-        timestamp: new Date().toISOString(),
-      };
-
-      return {
-        ...state,
-        orders: [...state.orders, newOrder],
-      };
-    }
-
-    case "UPDATE_STATUS":
-      return {
-        ...state,
-        orders: state.orders.map((order) =>
-          order.id === action.payload.orderId
-            ? {
-                ...order,
-                status: action.payload.status,
-              }
-            : order
-        ),
-      };
-
-    case "CANCEL_ORDER":
-      return {
-        ...state,
-        orders: state.orders.map((order) =>
-          order.id === action.payload
-            ? {
-                ...order,
-                status: "Cancelled",
-              }
-            : order
-        ),
-      };
-
-    case "CLEAR_ORDERS":
-      return {
-        ...initialState,
-      };
-
-    case "LOAD_ORDERS":
-      return {
-        ...state,
-        orders: action.payload,
-      };
-
-    default:
-      return state;
-  }
+// Turn a server order into the shape the screens already use
+function toAppOrder(order: ServerOrder): Order {
+  return {
+    id: order._id,
+    items: order.items.map((item) => ({
+      id: item.menuItem,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+    })),
+    total: order.totalAmount,
+    type: "Takeaway",
+    status: order.status,
+    timestamp: order.createdAt,
+    customer:
+      typeof order.user === "object" ? order.user?.name : undefined,
+  };
 }
+
+type ActionResult = {
+  success: boolean;
+  message: string;
+};
 
 type OrdersContextType = {
   orders: Order[];
-  createOrder: (payload: CreateOrderPayload) => void;
+  isLoading: boolean;
+  error: string;
+  refreshOrders: () => Promise<void>;
+  createOrder: (payload: CreateOrderPayload) => Promise<Order>;
   updateOrderStatus: (
     orderId: string,
     status: OrderStatus
-  ) => void;
-  cancelOrder: (orderId: string) => void;
-  clearOrders: () => void;
-  loadOrders: (orders: Order[]) => void;
-  isLoading: boolean;
+  ) => Promise<ActionResult>;
+  cancelOrder: (orderId: string) => Promise<ActionResult>;
 };
 
-const OrdersContext = createContext<
-  OrdersContextType | undefined
->(undefined);
+const OrdersContext = createContext<OrdersContextType | undefined>(
+  undefined
+);
 
-export function OrdersProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [state, dispatch] = useReducer(
-    ordersReducer,
-    initialState
-  );
+export function OrdersProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const loggedIn = !!user;
+  const role = user?.role;
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  /*
-   * Load saved orders when the app starts.
-   */
-  useEffect(() => {
-    const loadSavedOrders = async () => {
-      try {
-        const savedOrders =
-          await AsyncStorage.getItem(
-            ORDERS_STORAGE_KEY
-          );
-
-        if (savedOrders) {
-          const parsedOrders: Order[] =
-            JSON.parse(savedOrders);
-
-          dispatch({
-            type: "LOAD_ORDERS",
-            payload: parsedOrders,
-          });
-        }
-      } catch (error) {
-        console.error(
-          "Failed to load orders:",
-          error
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadSavedOrders();
-  }, []);
-
-  /*
-   * Save orders whenever the orders state changes.
-   *
-   * We wait until the initial AsyncStorage loading
-   * has completed so that the empty initial state
-   * does not overwrite saved orders.
-   */
-  useEffect(() => {
-    if (isLoading) {
+  // Manager gets all orders, a customer gets only their own
+  const refreshOrders = useCallback(async () => {
+    if (!loggedIn) {
       return;
     }
 
-    const saveOrders = async () => {
-      try {
-        await AsyncStorage.setItem(
-          ORDERS_STORAGE_KEY,
-          JSON.stringify(state.orders)
-        );
-      } catch (error) {
-        console.error(
-          "Failed to save orders:",
-          error
-        );
-      }
-    };
+    try {
+      const path = role === "manager" ? "/api/orders" : "/api/orders/my";
+      const data: ServerOrder[] = await request(path);
 
-    saveOrders();
-  }, [state.orders, isLoading]);
+      // The server sends the newest first. The screens expect the newest last.
+      setOrders(data.map(toAppOrder).reverse());
+      setError("");
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }, [loggedIn, role]);
 
-  const createOrder = (
-    payload: CreateOrderPayload
-  ) => {
-    dispatch({
-      type: "CREATE_ORDER",
-      payload,
-    });
-  };
+  // Load orders after login, and clear them after logout
+  useEffect(() => {
+    if (!loggedIn) {
+      setOrders([]);
+      return;
+    }
 
-  const updateOrderStatus = (
-    orderId: string,
-    status: OrderStatus
-  ) => {
-    dispatch({
-      type: "UPDATE_STATUS",
-      payload: {
-        orderId,
-        status,
+    setIsLoading(true);
+    refreshOrders().finally(() => setIsLoading(false));
+  }, [loggedIn, refreshOrders]);
+
+  // POST /api/orders. Only item ids and quantities are sent. The server
+  // reads prices from the database, so a fake price or total is useless.
+  const createOrder = async (payload: CreateOrderPayload): Promise<Order> => {
+    const data: ServerOrder = await request("/api/orders", {
+      method: "POST",
+      body: {
+        items: payload.items.map((item) => ({
+          menuItem: item.id,
+          quantity: item.quantity,
+        })),
       },
     });
+
+    const order = toAppOrder(data);
+    setOrders((previous) => [...previous, order]);
+    return order;
   };
 
-  const cancelOrder = (orderId: string) => {
-    dispatch({
-      type: "CANCEL_ORDER",
-      payload: orderId,
-    });
+  // PATCH /api/orders/:id/status
+  const updateOrderStatus = async (
+    orderId: string,
+    status: OrderStatus
+  ): Promise<ActionResult> => {
+    try {
+      const data: ServerOrder = await request(
+        `/api/orders/${orderId}/status`,
+        {
+          method: "PATCH",
+          body: { status },
+        }
+      );
+
+      setOrders((previous) =>
+        previous.map((order) =>
+          order.id === orderId ? { ...order, status: data.status } : order
+        )
+      );
+
+      return { success: true, message: "" };
+    } catch (e: any) {
+      return { success: false, message: e.message };
+    }
   };
 
-  const clearOrders = () => {
-    dispatch({
-      type: "CLEAR_ORDERS",
-    });
-  };
-
-  const loadOrders = (orders: Order[]) => {
-    dispatch({
-      type: "LOAD_ORDERS",
-      payload: orders,
-    });
-  };
+  const cancelOrder = (orderId: string) =>
+    updateOrderStatus(orderId, "Cancelled");
 
   return (
     <OrdersContext.Provider
       value={{
-        orders: state.orders,
+        orders,
+        isLoading,
+        error,
+        refreshOrders,
         createOrder,
         updateOrderStatus,
         cancelOrder,
-        clearOrders,
-        loadOrders,
-        isLoading,
       }}
     >
       {children}
@@ -297,9 +210,7 @@ export function useOrders() {
   const context = useContext(OrdersContext);
 
   if (!context) {
-    throw new Error(
-      "useOrders must be used inside OrdersProvider"
-    );
+    throw new Error("useOrders must be used inside OrdersProvider");
   }
 
   return context;

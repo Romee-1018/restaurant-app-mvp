@@ -1,4 +1,3 @@
-
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -43,44 +42,48 @@ const STATUS_STEPS: OrderStatus[] = [
 
 export default function OrderTrackingScreen() {
   const { colors } = useTheme();
-  const { orderId } = useLocalSearchParams<{ orderId?: string }>();
+  const params = useLocalSearchParams<{ orderId?: string | string[] }>();
+
+  const wantedId = Array.isArray(params.orderId)
+    ? params.orderId[0]
+    : params.orderId;
 
   const [order, setOrder] = useState<ServerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const loadOrder = useCallback(async (showError = false) => {
-    if (!orderId) {
-      setLoading(false);
-      return;
-    }
+  const loadOrder = useCallback(
+    async (showError = false) => {
+      try {
+        const orders = (await request("/api/orders/my")) as ServerOrder[];
 
-    try {
-      const orders = await request("/api/orders/my") as ServerOrder[];
-      const foundOrder = orders.find(
-  (item) => item._id === (Array.isArray(orderId) ? orderId[0] : orderId)
-);
-      console.log("Tracking Order ID:", orderId);
-      console.log("Orders from server:", orders);
+        // The server sends the newest order first.
+        // Without an order id, show the latest order.
+        const foundOrder = wantedId
+          ? orders.find((item) => item._id === wantedId)
+          : orders[0];
 
-
-      if (foundOrder) {
-        setOrder(foundOrder);
-      } else if (showError) {
-        Alert.alert("Order Not Found", "This order could not be found.");
+        if (foundOrder) {
+          setOrder(foundOrder);
+        } else if (showError) {
+          Alert.alert("Order Not Found", "This order could not be found.");
+        }
+      } catch (error) {
+        if (showError) {
+          Alert.alert(
+            "Order Loading Failed",
+            (error as Error).message || "Please try again."
+          );
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      if (showError) {
-        Alert.alert(
-          "Order Loading Failed",
-          (error as Error).message || "Please try again."
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [orderId]);
+    },
+    [wantedId]
+  );
 
+  // Poll GET /api/orders/my every ten seconds so the customer sees
+  // the status change when the manager updates it.
   useEffect(() => {
     loadOrder(true);
 

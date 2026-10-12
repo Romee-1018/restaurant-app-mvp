@@ -1,4 +1,3 @@
-
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 
 import { request } from "@/api/client";
+import { useOrders } from "@/context/OrdersContext";
 import { useTheme } from "@/context/ThemeContext";
 
 type OrderStatus =
@@ -42,26 +42,34 @@ type IncomingOrder = {
 
 export default function IncomingOrdersScreen() {
   const { colors } = useTheme();
+  const { refreshOrders } = useOrders();
   const [orders, setOrders] = useState<IncomingOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
-  const loadOrders = useCallback(async (showError = true) => {
-    try {
-      const data = await request("/api/orders");
-      setOrders(Array.isArray(data) ? data : []);
-    } catch (error) {
-      if (showError) {
-        Alert.alert(
-          "Orders Error",
-          error instanceof Error ? error.message : "Could not load orders."
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadOrders = useCallback(
+    async (showError = true) => {
+      try {
+        const data = await request("/api/orders");
+        setOrders(Array.isArray(data) ? data : []);
 
+        // Keep the shared orders (Manager Dashboard counts) up to date too
+        refreshOrders();
+      } catch (error) {
+        if (showError) {
+          Alert.alert(
+            "Orders Error",
+            error instanceof Error ? error.message : "Could not load orders."
+          );
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [refreshOrders]
+  );
+
+  // Load now, then every ten seconds so new customer orders appear
   useEffect(() => {
     loadOrders();
 
@@ -99,6 +107,8 @@ export default function IncomingOrdersScreen() {
             : order
         )
       );
+
+      refreshOrders();
     } catch (error) {
       Alert.alert(
         "Update Failed",
