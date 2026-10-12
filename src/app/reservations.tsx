@@ -31,7 +31,7 @@ export default function ReservationsScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.replace("/explore")}
           style={[
             styles.backButton,
             {

@@ -1,12 +1,12 @@
 import { router } from "expo-router";
 import {
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Switch,
   Text,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";

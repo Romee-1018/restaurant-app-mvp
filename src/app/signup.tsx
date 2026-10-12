@@ -165,7 +165,7 @@ export default function SignupScreen() {
           >
             {/* Back Button */}
             <Pressable
-              onPress={() => router.back()}
+             onPress={() => router.replace("/")}
               style={({ pressed }) => [
                 styles.backButton,
                 {

@@ -54,7 +54,7 @@ const { colors } = useTheme();
         </Text>
 
         <Pressable
-          onPress={() => router.back()}
+         onPress={() => router.replace("/")}
           style={[
             styles.backHomeButton,
             { backgroundColor: colors.primary },
@@ -128,24 +128,24 @@ const { colors } = useTheme();
         </View>
 
         <Pressable
-          onPress={() => router.back()}
-          style={[
-            styles.exitButton,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.exitEmoji,
-              { color: colors.text },
-            ]}
-          >
-            ↩
-          </Text>
-        </Pressable>
+  onPress={() => router.replace("/")}
+  style={[
+    styles.exitButton,
+    {
+      backgroundColor: colors.card,
+      borderColor: colors.border,
+    },
+  ]}
+>
+  <Text
+    style={[
+      styles.exitEmoji,
+      { color: colors.text },
+    ]}
+  >
+    ↩
+  </Text>
+</Pressable>
       </View>
 
       {/* Welcome */}

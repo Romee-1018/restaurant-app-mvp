@@ -181,7 +181,7 @@ export default function LoginScreen() {
             {/* BACK BUTTON */}
 
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => router.replace("/")}
               style={[
                 styles.backButton,
                 {

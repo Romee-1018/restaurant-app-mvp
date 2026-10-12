@@ -192,7 +192,7 @@ export default function MenuManagement() {
         </Text>
 
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.replace("/manager-dashboard")}
           style={[
             styles.backButton,
             { backgroundColor: colors.primary },
@@ -223,7 +223,7 @@ export default function MenuManagement() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.replace("/manager-dashboard")}
           style={[
             styles.backIconButton,
             {
